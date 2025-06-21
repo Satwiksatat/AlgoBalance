@@ -2,21 +2,25 @@
 
 function* bubbleSort(arr) {
   let n = arr.length;
-  let isSorted = false;
+  let comparisons = 0;
+  let swaps = 0;
+  
   for (let i = 0; i < n - 1; i++) {
-    isSorted = true;
-    yield { array: arr, line: 1 };
+    let hasSwapped = false;
+    yield { array: arr, line: 1, comparisons, swaps };
     for (let j = 0; j < n - i - 1; j++) {
-      yield { array: arr, comparing: [j, j + 1], line: 2 };
+      comparisons++;
+      yield { array: arr, comparing: [j, j + 1], line: 2, comparisons, swaps };
       if (arr[j].value > arr[j + 1].value) {
-        isSorted = false;
-        yield { array: arr, swapping: [j, j + 1], line: 3 };
+        hasSwapped = true;
+        swaps++;
+        yield { array: arr, swapping: [j, j + 1], line: 3, comparisons, swaps };
         [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-        yield { array: arr, swapping: [j, j + 1], line: 4 };
+        yield { array: arr, swapping: [j, j + 1], line: 4, comparisons, swaps };
       }
     }
-    if(isSorted) {
-        yield { array: arr, line: 6 };
+    if(!hasSwapped) {
+        yield { array: arr, line: 6, comparisons, swaps };
         break;
     };
   }
@@ -24,42 +28,53 @@ function* bubbleSort(arr) {
 }
 
 function* quickSort(arr) {
-    const stack = [{ low: 0, high: arr.length - 1, line: 1 }];
-    yield { array: arr, line: 1 };
+    let comparisons = 0;
+    let swaps = 0;
+    const stack = [{ low: 0, high: arr.length - 1 }];
+    yield { array: arr, line: 1, comparisons, swaps };
     
     while (stack.length > 0) {
         const { low, high } = stack.pop();
-        yield { array: arr, line: 2 };
+        yield { array: arr, line: 2, comparisons, swaps };
 
         if (low < high) {
-            yield { array: arr, line: 3 };
-            const pivotIndex = yield* partition(arr, low, high);
-            yield { array: arr, line: 4 };
+            yield { array: arr, line: 3, comparisons, swaps };
+            const partitionGenerator = partition(arr, low, high);
+            let partitionResult = partitionGenerator.next();
+            while(!partitionResult.done) {
+                comparisons += partitionResult.value.newComparisons || 0;
+                swaps += partitionResult.value.newSwaps || 0;
+                yield { ...partitionResult.value, comparisons, swaps };
+                partitionResult = partitionGenerator.next();
+            }
+            const pivotIndex = partitionResult.value;
+
+            yield { array: arr, line: 4, comparisons, swaps };
             stack.push({ low, high: pivotIndex - 1 });
-            yield { array: arr, line: 5 };
+            yield { array: arr, line: 5, comparisons, swaps };
             stack.push({ low: pivotIndex + 1, high });
         }
     }
-    yield { array: arr, line: 7 };
+    yield { array: arr, line: 7, comparisons, swaps };
     return arr;
 }
 
 function* partition(arr, low, high) {
     const pivot = arr[high];
     let i = low - 1;
-    yield { array: arr, pivot: high, line: 10 };
+    yield { array: arr, pivot: high, line: 10, newComparisons: 0, newSwaps: 0 };
 
     for (let j = low; j < high; j++) {
-        yield { array: arr, comparing: [j, high], line: 11 };
+        yield { array: arr, comparing: [j, high], line: 11, newComparisons: 1, newSwaps: 0 };
         if (arr[j].value < pivot.value) {
             i++;
-            yield { array: arr, swapping: [i, j], line: 12 };
+            yield { array: arr, swapping: [i, j], line: 12, newComparisons: 0, newSwaps: 1 };
             [arr[i], arr[j]] = [arr[j], arr[i]];
             yield { array: arr, swapping: [i, j], line: 13 };
         }
     }
     
-    yield { array: arr, swapping: [i + 1, high], line: 15 };
+    yield { array: arr, swapping: [i + 1, high], line: 15, newComparisons: 0, newSwaps: 1 };
     [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
     yield { array: arr, swapping: [i + 1, high], line: 16 };
     
@@ -67,68 +82,104 @@ function* partition(arr, low, high) {
 }
 
 function* mergeSort(arr) {
+    let comparisons = 0;
+    let swaps = 0; // Represents data writes in this context
     let n = arr.length;
-    yield { array: arr, line: 1 };
+    let workArray = [...arr]; // Use a working array to merge into
+    yield { array: arr, line: 1, comparisons, swaps };
   
     for (let size = 1; size < n; size *= 2) {
-        yield { array: arr, line: 2 };
+        yield { array: arr, line: 2, comparisons, swaps };
         for (let leftStart = 0; leftStart < n; leftStart += 2 * size) {
-            let mid = leftStart + size - 1;
-            if (mid >= n - 1) continue;
+            let mid = Math.min(leftStart + size - 1, n - 1);
             let rightEnd = Math.min(leftStart + 2 * size - 1, n - 1);
             
-            yield { array: arr, line: 4 };
-
-            const leftArr = arr.slice(leftStart, mid + 1);
-            const rightArr = arr.slice(mid + 1, rightEnd + 1);
-
-            let i = 0, j = 0, k = leftStart;
-
-            while (i < leftArr.length && j < rightArr.length) {
-                yield { array: arr, comparing: [leftStart + i, mid + 1 + j], line: 9 };
-                if (leftArr[i].value <= rightArr[j].value) {
-                    arr[k] = leftArr[i];
-                    i++;
-                } else {
-                    arr[k] = rightArr[j];
-                    j++;
-                }
-                yield { array: [...arr], swapping: [k, k], line: 5 }; 
-                k++;
+            yield { array: arr, line: 4, comparisons, swaps };
+            const mergeGenerator = merge(arr, leftStart, mid, rightEnd, workArray);
+            let mergeResult = mergeGenerator.next();
+            while(!mergeResult.done){
+                comparisons += mergeResult.value.newComparisons || 0;
+                swaps += mergeResult.value.newSwaps || 0;
+                yield { ...mergeResult.value, comparisons, swaps};
+                mergeResult = mergeGenerator.next();
             }
-
-            while (i < leftArr.length) {
-                arr[k] = leftArr[i];
-                yield { array: [...arr], swapping: [k, k], line: 16 };
-                i++;
-                k++;
+            // Copy merged data back to main array for visualization
+            for(let i = leftStart; i <= rightEnd; i++){
+                arr[i] = workArray[i];
             }
-
-            while (j < rightArr.length) {
-                arr[k] = rightArr[j];
-                yield { array: [...arr], swapping: [k, k], line: 19 };
-                j++;
-                k++;
-            }
+            yield { array: [...arr], line: 5, comparisons, swaps };
         }
     }
     return arr;
 }
 
+function* merge(arr, left, mid, right, resultArr) {
+    let k = left, i = left, j = mid + 1;
+    yield { array: arr, line: 8, newComparisons: 0, newSwaps: 0 };
+    while (i <= mid && j <= right) {
+        yield { array: arr, comparing: [i, j], line: 9, newComparisons: 1, newSwaps: 0 };
+        if (arr[i].value <= arr[j].value) {
+            resultArr[k] = arr[i];
+            i++;
+            yield { array: arr, line: 10, newComparisons: 0, newSwaps: 1};
+        } else {
+            resultArr[k] = arr[j];
+            j++;
+            yield { array: arr, line: 12, newComparisons: 0, newSwaps: 1};
+        }
+        k++;
+    }
+    while (i <= mid) {
+        resultArr[k] = arr[i];
+        i++;
+        k++;
+        yield { array: arr, line: 16, newComparisons: 0, newSwaps: 1};
+    }
+    while (j <= right) {
+        resultArr[k] = arr[j];
+        j++;
+        k++;
+        yield { array: arr, line: 19, newComparisons: 0, newSwaps: 1};
+    }
+}
+
 function* heapSort(arr) {
     let n = arr.length;
-    yield { array: arr, line: 1 };
+    let comparisons = 0;
+    let swaps = 0;
+    yield { array: arr, line: 1, comparisons, swaps };
+
+    // Build heap (rearrange array)
     for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-        yield* heapify(arr, n, i);
+        yield { array: arr, line: 3, comparisons, swaps };
+        const heapifyGen = heapify(arr, n, i);
+        let heapifyResult = heapifyGen.next();
+        while(!heapifyResult.done){
+            comparisons += heapifyResult.value.newComparisons || 0;
+            swaps += heapifyResult.value.newSwaps || 0;
+            yield { ...heapifyResult.value, comparisons, swaps };
+            heapifyResult = heapifyGen.next();
+        }
     }
-    yield { array: arr, line: 4 };
+    yield { array: arr, line: 4, comparisons, swaps };
+
+    // One by one extract an element from heap
     for (let i = n - 1; i > 0; i--) {
-        yield { array: arr, line: 5 };
-        yield { array: arr, swapping: [0, i], line: 6 };
+        yield { array: arr, line: 5, comparisons, swaps };
+        swaps++;
+        yield { array: arr, swapping: [0, i], line: 6, comparisons, swaps };
         [arr[0], arr[i]] = [arr[i], arr[0]];
-        yield { array: arr, swapping: [0, i] };
-        yield { array: arr, line: 7 };
-        yield* heapify(arr, i, 0);
+        yield { array: arr, swapping: [0, i] }; // Show the swap
+        
+        yield { array: arr, line: 7, comparisons, swaps };
+        const heapifyGen = heapify(arr, i, 0);
+        let heapifyResult = heapifyGen.next();
+        while(!heapifyResult.done){
+            comparisons += heapifyResult.value.newComparisons || 0;
+            swaps += heapifyResult.value.newSwaps || 0;
+            yield { ...heapifyResult.value, comparisons, swaps };
+            heapifyResult = heapifyGen.next();
+        }
     }
     return arr;
 }
@@ -137,24 +188,38 @@ function* heapify(arr, n, i) {
     let largest = i;
     let l = 2 * i + 1;
     let r = 2 * i + 2;
-    yield { array: arr, pivot: i, line: 11 };
+    yield { array: arr, pivot: i, line: 11, newComparisons: 0, newSwaps: 0 };
+    
     if (l < n) {
-        yield { array: arr, comparing: [l, largest], line: 12 };
+        yield { array: arr, comparing: [l, largest], line: 12, newComparisons: 1, newSwaps: 0 };
         if(arr[l].value > arr[largest].value) largest = l;
     }
+    
     if (r < n) {
-        yield { array: arr, comparing: [r, largest], line: 14 };
+        yield { array: arr, comparing: [r, largest], line: 14, newComparisons: 1, newSwaps: 0 };
         if (arr[r].value > arr[largest].value) largest = r;
     }
+    
     if (largest !== i) {
-        yield { array: arr, swapping: [i, largest], line: 17 };
+        yield { array: arr, swapping: [i, largest], line: 17, newComparisons: 0, newSwaps: 1 };
         [arr[i], arr[largest]] = [arr[largest], arr[i]];
         yield { array: arr, swapping: [i, largest] };
-        yield { array: arr, line: 18 };
-        yield* heapify(arr, n, largest);
+        
+        const heapifyGen = heapify(arr, n, largest);
+        let heapifyResult = heapifyGen.next();
+        while(!heapifyResult.done){
+            yield { ...heapifyResult.value };
+            heapifyResult = heapifyGen.next();
+        }
     }
 }
 
+export const ALGO_FUNCTIONS = {
+    bubbleSort,
+    quickSort,
+    mergeSort,
+    heapSort,
+};
 
 export const ALGO_DETAILS = {
   bubbleSort: {
@@ -163,13 +228,13 @@ export const ALGO_DETAILS = {
     stable: true,
     description: 'Compares adjacent elements and swaps them if they are in the wrong order. This process repeats until the list is sorted.',
     pseudocode: [
-      'procedure bubbleSort(A)',
-      '  for i from 0 to n–2',
+      'procedure BubbleSort(A)',
+      '  for i from 0 to n-2',
       '    for j from 0 to n-i-2',
       '      if A[j] > A[j+1]',
       '        swap(A[j], A[j+1])',
       '      end if',
-      '    if no swaps, break',
+      '    if no swaps in inner loop, break',
       '  end for',
       'end procedure'
     ]
@@ -180,11 +245,11 @@ export const ALGO_DETAILS = {
     stable: false,
     description: 'A divide-and-conquer algorithm. It picks a \'pivot\' element and partitions the other elements into two sub-arrays.',
     pseudocode: [
-      'procedure quickSort(A, low, high)',
+      'procedure QuickSort(A, low, high)',
       '  if low < high',
       '    pi = partition(A, low, high)',
-      '    quickSort(A, low, pi - 1)',
-      '    quickSort(A, pi + 1, high)',
+      '    QuickSort(A, low, pi - 1)',
+      '    QuickSort(A, pi + 1, high)',
       '  end if',
       'end procedure',
       '',
@@ -208,7 +273,7 @@ export const ALGO_DETAILS = {
     stable: true,
     description: 'A divide-and-conquer algorithm that divides the array into halves, sorts them recursively, and then merges them.',
     pseudocode: [
-      'procedure mergeSort(A)',
+      'procedure MergeSort(A)',
       '  for size from 1 to n-1 by size*2',
       '    for leftStart from 0 to n-1 by size*2',
       '      mid = ...; rightEnd = ...',
@@ -238,7 +303,7 @@ export const ALGO_DETAILS = {
     stable: false,
     description: 'Uses a binary heap data structure. It first builds a max heap from the data, then repeatedly extracts the maximum element.',
     pseudocode: [
-        'procedure heapSort(A)',
+        'procedure HeapSort(A)',
         '  n = A.length',
         '  buildMaxHeap(A)',
         '  for i from n-1 down to 1',
@@ -262,10 +327,3 @@ export const ALGO_DETAILS = {
     ]
   }
 };
-
-export const ALGO_FUNCTIONS = {
-    bubbleSort,
-    quickSort,
-    mergeSort,
-    heapSort
-}

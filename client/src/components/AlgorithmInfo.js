@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Modal from './Modal';
 import { ALGO_DETAILS } from '../algorithms';
 
-const AlgorithmInfo = ({ algoKey }) => {
+const AlgorithmInfo = ({ algoKey, metrics }) => { // FIXED: Added 'metrics' to props destructuring
     const [explanation, setExplanation] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -51,8 +51,20 @@ ${info.pseudocode.join('\n')}
 
     const stabilityClass = info.stable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
     return (
-        <div className="bg-white p-4 rounded-lg shadow-md">
+        <div className="bg-white p-4 rounded-lg shadow-md border">
             <h2 className="text-xl font-bold text-gray-800 mb-2">{info.name}</h2>
+            
+            <div className="flex justify-around bg-gray-50 p-2 rounded-lg mb-3">
+                <div className="text-center">
+                    <p className="text-sm text-gray-500">Comparisons</p>
+                    <p className="text-2xl font-bold text-blue-600">{metrics.comparisons}</p>
+                </div>
+                 <div className="text-center">
+                    <p className="text-sm text-gray-500">Swaps</p>
+                    <p className="text-2xl font-bold text-red-600">{metrics.swaps}</p>
+                </div>
+            </div>
+
             <div className="flex items-center gap-4 mb-3 flex-wrap">
                 <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{info.complexity}</p>
                 <span className={`text-sm font-semibold px-2 py-1 rounded-full ${stabilityClass}`}>{info.stable ? 'Stable' : 'Unstable'}</span>

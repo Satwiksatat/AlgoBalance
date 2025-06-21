@@ -1,34 +1,58 @@
 // File: /client/src/helpers/arrayManager.js
-import { PALETTE } from '../constants';
+import { PALETTE, PATTERNS } from '../constants';
 
-export const generateVisualizerArray = () => {
-  const newArr = [];
-  const size = 20;
-  const valueCounts = {};
+const processArrayForVisualization = (arr, isColorBlindMode) => {
+    const valueCounts = {};
+    const items = arr.map((value, index) => {
+        valueCounts[value] = (valueCounts[value] || 0) + 1;
+        return { value, id: index, comparisons: 0, swaps: 0 };
+    });
 
-  for (let i = 0; i < size; i++) {
-      const value = Math.floor(Math.random() * 90) + 10;
-      newArr.push({ value, id: i });
-      valueCounts[value] = (valueCounts[value] || 0) + 1;
-  }
-  
-  const duplicateValues = Object.keys(valueCounts).filter(v => valueCounts[v] > 1);
-  const colorMap = {};
-  duplicateValues.forEach(val => {
-      const baseColor = [Math.random() * 255, Math.random() * 255, Math.random() * 255];
-      colorMap[val] = { base: `rgb(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]})`, shades: [] };
-  });
+    const duplicateValues = Object.keys(valueCounts).filter(v => valueCounts[v] > 1);
+    const colorMap = {};
+    const patternKeys = Object.keys(PATTERNS);
 
-  const finalArray = newArr.map(item => {
-      if (duplicateValues.includes(String(item.value))) {
-          const colorInfo = colorMap[item.value];
-          const shadeFactor = 1 - (colorInfo.shades.length * 0.2);
-          const newShade = `rgba(${colorInfo.base.slice(4,-1)}, ${Math.max(0.3, shadeFactor)})`;
-          colorInfo.shades.push(newShade);
-          return { ...item, color: newShade };
-      }
-      return { ...item, color: PALETTE.default };
-  });
+    duplicateValues.forEach((val, i) => {
+        const baseColor = [Math.random() * 255, Math.random() * 255, Math.random() * 255];
+        colorMap[val] = { 
+            base: `rgb(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]})`, 
+            shades: [],
+            patternId: patternKeys[i % patternKeys.length] // Cycle through patterns
+        };
+    });
 
-  return finalArray;
+    return items.map(item => {
+        if (duplicateValues.includes(String(item.value))) {
+            const info = colorMap[item.value];
+            if (isColorBlindMode) {
+                return { ...item, color: PALETTE.cb_base, patternId: info.patternId };
+            } else {
+                const shadeFactor = 1 - (info.shades.length * 0.2);
+                const newShade = `rgba(${info.base.slice(4,-1)}, ${Math.max(0.3, shadeFactor)})`;
+                info.shades.push(newShade);
+                return { ...item, color: newShade };
+            }
+        }
+        return { ...item, color: PALETTE.default };
+    });
+};
+
+export const generateRandomArray = (isColorBlindMode) => {
+    const newArr = [];
+    const size = 20;
+    for (let i = 0; i < size; i++) {
+        newArr.push(Math.floor(Math.random() * 90) + 10);
+    }
+    return processArrayForVisualization(newArr, isColorBlindMode);
+};
+
+export const parseCustomArray = (inputString, isColorBlindMode) => {
+    if (!inputString) return [];
+    const arr = inputString
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => !isNaN(s) && s !== '')
+        .map(Number)
+        .filter(n => n >= 0 && n <= 100);
+    return processArrayForVisualization(arr, isColorBlindMode);
 };
