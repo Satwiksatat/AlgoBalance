@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Modal from './Modal';
 import { ALGO_DETAILS } from '../algorithms';
 
-const AlgorithmInfo = ({ algoKey, metrics }) => { // FIXED: Added 'metrics' to props destructuring
+const AlgorithmInfo = ({ algoKey, metrics }) => {
     const [explanation, setExplanation] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -21,22 +21,25 @@ const AlgorithmInfo = ({ algoKey, metrics }) => { // FIXED: Added 'metrics' to p
 Pseudocode:
 ---
 ${info.pseudocode.join('\n')}
----`;
-        
-        let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-        const payload = { contents: chatHistory };
-        const apiKey = ""; // Remember to add your API key here
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+---`;       
+    
+        let chatHistory = { user: "user", response_mode:"blocking", inputs: { query: prompt } };
+        // const payload = { contents: chatHistory };
+        const apiKey = "app-KyPmXcKemwcLTFeCjtW7wxqL";
+        const apiUrl = 'http://172.16.3.123:80/v1/completion-messages';
 
         try {
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                headers: { 'Content-Type': 'application/json',
+                           'Authorization': `Bearer ${apiKey}`
+                 },
+                body: JSON.stringify(chatHistory)
             });
             const result = await response.json();
-            if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
-                setExplanation(result.candidates[0].content.parts[0].text);
+            // console.error(result);
+            if (result.answer) {
+                setExplanation(result.answer);
             } else {
                 setExplanation("Sorry, I couldn't generate an explanation at this time.");
             }
