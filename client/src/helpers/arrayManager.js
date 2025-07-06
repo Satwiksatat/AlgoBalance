@@ -37,22 +37,25 @@ const processArrayForVisualization = (arr, isColorBlindMode) => {
     });
 };
 
-export const generateRandomArray = (isColorBlindMode) => {
+export const generateRandomArray = (isColorBlindMode, size) => {
     const newArr = [];
-    const size = 20;
     for (let i = 0; i < size; i++) {
         newArr.push(Math.floor(Math.random() * 90) + 10);
     }
     return processArrayForVisualization(newArr, isColorBlindMode);
 };
 
-export const parseCustomArray = (inputString, isColorBlindMode) => {
+export const parseCustomArray = (inputString, isColorBlindMode, maxSize = null) => {
     if (!inputString) return [];
-    const arr = inputString
+    let arr = inputString
         .split(',')
         .map(s => s.trim())
         .filter(s => !isNaN(s) && s !== '')
         .map(Number)
         .filter(n => n >= 0 && n <= 100);
+
+    if (maxSize && arr.length > maxSize) {
+        arr = arr.slice(0, maxSize);
+    }
     return processArrayForVisualization(arr, isColorBlindMode);
 };

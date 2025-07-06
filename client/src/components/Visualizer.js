@@ -1,9 +1,10 @@
 // File: /client/src/components/Visualizer.js
 import React from 'react';
 import Bar from './Bar';
+import CallStack from './CallStack'; // Import the new component
 import { PATTERNS } from '../constants';
 
-const Visualizer = ({ array, highlights }) => {
+const Visualizer = ({ array, highlights, stack, isSorting }) => { // Add stack to props
   if (!array) return null;
   const barWidth = 100 / (array.length * 1.5);
 
@@ -20,6 +21,8 @@ const Visualizer = ({ array, highlights }) => {
         </defs>
       </svg>
       
+      <CallStack stack={stack} isSorting={isSorting} /> {/* Add the CallStack component */}
+
       {array.map((item, index) => (
         <Bar
           key={item.id}
