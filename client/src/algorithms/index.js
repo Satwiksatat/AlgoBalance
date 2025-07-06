@@ -1,26 +1,13 @@
-// File: client/src/algorithms/index.js
+// File: /client/src/algorithms/index.js
 
-/**
- * Each sorting function is instrumented to emit a 'call' event
- * with a locals snapshot capturing all parameters and key variables
- * at the moment of entry.
- */
-
-// ——— Bubble Sort ———
-export function* bubbleSort(arr) {
-  // local variables at entry
+function* bubbleSort(arr) {
   let n = arr.length;
   let comparisons = 0;
   let swaps = 0;
-  yield {
-    type: 'call',
-    name: 'bubbleSort',
-    args: [],
-    locals: { n, comparisons, swaps }
-  };
-
+  
   for (let i = 0; i < n - 1; i++) {
     let hasSwapped = false;
+    yield { array: arr, line: 1, comparisons, swaps };
     for (let j = 0; j < n - i - 1; j++) {
       comparisons++;
       yield { array: arr, comparing: [j, j + 1], line: 2, comparisons, swaps };
@@ -32,256 +19,207 @@ export function* bubbleSort(arr) {
         yield { array: arr, swapping: [j, j + 1], line: 4, comparisons, swaps };
       }
     }
-    if (!hasSwapped) break;
+    if(!hasSwapped) {
+        yield { array: arr, line: 6, comparisons, swaps };
+        break;
+    };
   }
-
-  yield { type: 'return', name: 'bubbleSort' };
   return arr;
 }
 
-// ——— Quick Sort + Partition ———
-export function* quickSort(arr) {
-  // parameters and initial stack
-  let comparisons = 0;
-  let swaps = 0;
-  let callDepth = 0;
-  const stack = [{ low: 0, high: arr.length - 1 }];
-  yield {
-    type: 'call',
-    name: 'quickSort',
-    args: [],
-    locals: { comparisons, swaps, stack: [...stack] }
-  };
+function* quickSort(arr) {
+    let comparisons = 0;
+    let swaps = 0;
+    const stack = [{ low: 0, high: arr.length - 1 }];
+    yield { array: arr, line: 1, comparisons, swaps };
+    
+    while (stack.length > 0) {
+        const { low, high } = stack.pop();
+        yield { array: arr, line: 2, comparisons, swaps };
 
-  while (stack.length > 0) {
-    const { low, high } = stack.pop();
-    callDepth++;
-    yield { array: arr, line: 2, comparisons, swaps, locals: { low, high, callDepth } };
+        if (low < high) {
+            yield { array: arr, line: 3, comparisons, swaps };
+            const partitionGenerator = partition(arr, low, high);
+            let partitionResult = partitionGenerator.next();
+            while(!partitionResult.done) {
+                comparisons += partitionResult.value.newComparisons || 0;
+                swaps += partitionResult.value.newSwaps || 0;
+                yield { ...partitionResult.value, comparisons, swaps };
+                partitionResult = partitionGenerator.next();
+            }
+            const pivotIndex = partitionResult.value;
 
-    if (low < high) {
-      // partition subroutine
-      const partitionGen = partition(arr, low, high, comparisons, swaps);
-      let step = partitionGen.next();
-      while (!step.done) {
-        const e = step.value;
-        comparisons = e.comparisons;
-        swaps       = e.swaps;
-        yield { ...e };
-        step = partitionGen.next();
-      }
-      const pivotIndex = step.value;
-      yield { array: arr, line: 4, comparisons, swaps, locals: { low, high, pivotIndex } };
-
-      // push sub-ranges
-      stack.push({ low: 0, high: pivotIndex - 1 });
-      stack.push({ low: pivotIndex + 1, high });
+            yield { array: arr, line: 4, comparisons, swaps };
+            stack.push({ low, high: pivotIndex - 1 });
+            yield { array: arr, line: 5, comparisons, swaps };
+            stack.push({ low: pivotIndex + 1, high });
+        }
     }
-  }
-
-  yield { type: 'return', name: 'quickSort' };
-  return arr;
+    yield { array: arr, line: 7, comparisons, swaps };
+    return arr;
 }
 
-export function* partition(arr, low, high, prevComp = 0, prevSwaps = 0) {
-  // parameters and locals
-  let comparisons = prevComp;
-  let swaps = prevSwaps;
-  let i = low - 1;
-  const pivotValue = arr[high].value;
-  yield {
-    type: 'call',
-    name: 'partition',
-    args: [low, high],
-    locals: { low, high, i, pivotValue, comparisons, swaps }
-  };
+function* partition(arr, low, high) {
+    const pivot = arr[high];
+    let i = low - 1;
+    yield { array: arr, pivot: high, line: 10, newComparisons: 0, newSwaps: 0 };
 
-  for (let j = low; j < high; j++) {
-    comparisons++;
-    yield { array: arr, comparing: [j, high], line: 11, comparisons, swaps };
-    if (arr[j].value < pivotValue) {
-      i++;
-      swaps++;
-      yield { array: arr, swapping: [i, j], line: 12, comparisons, swaps };
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-      yield { array: arr, swapping: [i, j], line: 13, comparisons, swaps };
+    for (let j = low; j < high; j++) {
+        yield { array: arr, comparing: [j, high], line: 11, newComparisons: 1, newSwaps: 0 };
+        if (arr[j].value < pivot.value) {
+            i++;
+            yield { array: arr, swapping: [i, j], line: 12, newComparisons: 0, newSwaps: 1 };
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+            yield { array: arr, swapping: [i, j], line: 13 };
+        }
     }
-  }
-  // final pivot swap
-  swaps++;
-  [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
-  yield { array: arr, swapping: [i + 1, high], line: 15, comparisons, swaps, locals: { low, high, i, pivotValue } };
-
-  yield { type: 'return', name: 'partition', locals: { low, high, i, pivotValue, comparisons, swaps } };
-  return i + 1;
+    
+    yield { array: arr, swapping: [i + 1, high], line: 15, newComparisons: 0, newSwaps: 1 };
+    [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+    yield { array: arr, swapping: [i + 1, high], line: 16 };
+    
+    return i + 1;
 }
 
-// ——— Merge Sort + Merge ———
-export function* mergeSort(arr) {
-  let comparisons = 0;
-  let swaps = 0;
-  let size = 1;
-  const n = arr.length;
-  yield { type: 'call', name: 'mergeSort', args: [], locals: { size, n, comparisons, swaps } };
-
-  while (size < n) {
-    for (let leftStart = 0; leftStart < n; leftStart += 2 * size) {
-      const mid      = Math.min(leftStart + size - 1, n - 1);
-      const rightEnd = Math.min(leftStart + 2 * size - 1, n - 1);
-      yield { array: arr, line: 4, comparisons, swaps, locals: { leftStart, mid, rightEnd, size } };
-
-      // merge subroutine
-      const mergeGen = merge(arr, leftStart, mid, rightEnd, [], comparisons, swaps);
-      let step = mergeGen.next();
-      while (!step.done) {
-        const e = step.value;
-        comparisons = e.comparisons;
-        swaps       = e.swaps;
-        yield { ...e };
-        step = mergeGen.next();
-      }
-
-      size *= 2;
+function* mergeSort(arr) {
+    let comparisons = 0;
+    let swaps = 0; // Represents data writes in this context
+    let n = arr.length;
+    let workArray = [...arr]; // Use a working array to merge into
+    yield { array: arr, line: 1, comparisons, swaps };
+  
+    for (let size = 1; size < n; size *= 2) {
+        yield { array: arr, line: 2, comparisons, swaps };
+        for (let leftStart = 0; leftStart < n; leftStart += 2 * size) {
+            let mid = Math.min(leftStart + size - 1, n - 1);
+            let rightEnd = Math.min(leftStart + 2 * size - 1, n - 1);
+            
+            yield { array: arr, line: 4, comparisons, swaps };
+            const mergeGenerator = merge(arr, leftStart, mid, rightEnd, workArray);
+            let mergeResult = mergeGenerator.next();
+            while(!mergeResult.done){
+                comparisons += mergeResult.value.newComparisons || 0;
+                swaps += mergeResult.value.newSwaps || 0;
+                yield { ...mergeResult.value, comparisons, swaps};
+                mergeResult = mergeGenerator.next();
+            }
+            // Copy merged data back to main array for visualization
+            for(let i = leftStart; i <= rightEnd; i++){
+                arr[i] = workArray[i];
+            }
+            yield { array: [...arr], line: 5, comparisons, swaps };
+        }
     }
-  }
-
-  yield { type: 'return', name: 'mergeSort', locals: { comparisons, swaps } };
-  return arr;
+    return arr;
 }
 
-export function* merge(arr, left, mid, right, buffer = [], prevComp = 0, prevSwaps = 0) {
-  let comparisons = prevComp;
-  let swaps = prevSwaps;
-  let i = left;
-  let j = mid + 1;
-  let k = left;
-  yield {
-    type: 'call',
-    name: 'merge',
-    args: [left, mid, right],
-    locals: { left, mid, right, i, j, k, comparisons, swaps }
-  };
-
-  while (i <= mid && j <= right) {
-    comparisons++;
-    yield { array: arr, comparing: [i, j], line: 9, comparisons, swaps };
-    if (arr[i].value <= arr[j].value) {
-      buffer[k++] = arr[i++];
-      swaps++;
-      yield { array: arr, line: 10, comparisons, swaps };
-    } else {
-      buffer[k++] = arr[j++];
-      swaps++;
-      yield { array: arr, line: 12, comparisons, swaps };
+function* merge(arr, left, mid, right, resultArr) {
+    let k = left, i = left, j = mid + 1;
+    yield { array: arr, line: 8, newComparisons: 0, newSwaps: 0 };
+    while (i <= mid && j <= right) {
+        yield { array: arr, comparing: [i, j], line: 9, newComparisons: 1, newSwaps: 0 };
+        if (arr[i].value <= arr[j].value) {
+            resultArr[k] = arr[i];
+            i++;
+            yield { array: arr, line: 10, newComparisons: 0, newSwaps: 1};
+        } else {
+            resultArr[k] = arr[j];
+            j++;
+            yield { array: arr, line: 12, newComparisons: 0, newSwaps: 1};
+        }
+        k++;
     }
-  }
-
-  while (i <= mid) {
-    buffer[k++] = arr[i++];
-    swaps++;
-    yield { array: arr, line: 16, comparisons, swaps };
-  }
-  while (j <= right) {
-    buffer[k++] = arr[j++];
-    swaps++;
-    yield { array: arr, line: 19, comparisons, swaps };
-  }
-
-  // copy back
-  for (let idx = left; idx <= right; idx++) arr[idx] = buffer[idx];
-  yield { array: [...arr], line: 20, comparisons, swaps, locals: { left, mid, right } };
-
-  yield { type: 'return', name: 'merge', locals: { left, mid, right, comparisons, swaps } };
+    while (i <= mid) {
+        resultArr[k] = arr[i];
+        i++;
+        k++;
+        yield { array: arr, line: 16, newComparisons: 0, newSwaps: 1};
+    }
+    while (j <= right) {
+        resultArr[k] = arr[j];
+        j++;
+        k++;
+        yield { array: arr, line: 19, newComparisons: 0, newSwaps: 1};
+    }
 }
 
-// ——— Heap Sort + Heapify ———
-export function* heapSort(arr) {
-  const n = arr.length;
-  let comparisons = 0;
-  let swaps = 0;
-  yield { type: 'call', name: 'heapSort', args: [], locals: { n, comparisons, swaps } };
+function* heapSort(arr) {
+    let n = arr.length;
+    let comparisons = 0;
+    let swaps = 0;
+    yield { array: arr, line: 1, comparisons, swaps };
 
-  // build heap
-  for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-    const heapGen = heapify(arr, n, i, comparisons, swaps);
-    let step = heapGen.next();
-    while (!step.done) {
-      const e = step.value;
-      comparisons = e.comparisons;
-      swaps       = e.swaps;
-      yield { ...e };
-      step = heapGen.next();
+    // Build heap (rearrange array)
+    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+        yield { array: arr, line: 3, comparisons, swaps };
+        const heapifyGen = heapify(arr, n, i);
+        let heapifyResult = heapifyGen.next();
+        while(!heapifyResult.done){
+            comparisons += heapifyResult.value.newComparisons || 0;
+            swaps += heapifyResult.value.newSwaps || 0;
+            yield { ...heapifyResult.value, comparisons, swaps };
+            heapifyResult = heapifyGen.next();
+        }
     }
-  }
+    yield { array: arr, line: 4, comparisons, swaps };
 
-  // extract
-  for (let i = n - 1; i > 0; i--) {
-    swaps++;
-    [arr[0], arr[i]] = [arr[i], arr[0]];
-    yield { array: arr, swapping: [0, i], line: 6, comparisons, swaps, locals: { i } };
-    const heapGen2 = heapify(arr, i, 0, comparisons, swaps);
-    let step2 = heapGen2.next();
-    while (!step2.done) {
-      const e = step2.value;
-      comparisons = e.comparisons;
-      swaps       = e.swaps;
-      yield { ...e };
-      step2 = heapGen2.next();
+    // One by one extract an element from heap
+    for (let i = n - 1; i > 0; i--) {
+        yield { array: arr, line: 5, comparisons, swaps };
+        swaps++;
+        yield { array: arr, swapping: [0, i], line: 6, comparisons, swaps };
+        [arr[0], arr[i]] = [arr[i], arr[0]];
+        yield { array: arr, swapping: [0, i] }; // Show the swap
+        
+        yield { array: arr, line: 7, comparisons, swaps };
+        const heapifyGen = heapify(arr, i, 0);
+        let heapifyResult = heapifyGen.next();
+        while(!heapifyResult.done){
+            comparisons += heapifyResult.value.newComparisons || 0;
+            swaps += heapifyResult.value.newSwaps || 0;
+            yield { ...heapifyResult.value, comparisons, swaps };
+            heapifyResult = heapifyGen.next();
+        }
     }
-  }
-
-  yield { type: 'return', name: 'heapSort', locals: { comparisons, swaps } };
-  return arr;
+    return arr;
 }
 
-export function* heapify(arr, n, i, prevComp = 0, prevSwaps = 0) {
-  let comparisons = prevComp;
-  let swaps = prevSwaps;
-  let largest = i;
-  const l = 2 * i + 1;
-  const r = 2 * i + 2;
-  yield {
-    type: 'call',
-    name: 'heapify',
-    args: [n, i],
-    locals: { n, i, comparisons, swaps }
-  };
-
-  if (l < n) {
-    comparisons++;
-    yield { array: arr, comparing: [l, largest], line: 12, comparisons, swaps };
-    if (arr[l].value > arr[largest].value) largest = l;
-  }
-  if (r < n) {
-    comparisons++;
-    yield { array: arr, comparing: [r, largest], line: 14, comparisons, swaps };
-    if (arr[r].value > arr[largest].value) largest = r;
-  }
-
-  if (largest !== i) {
-    swaps++;
-    [arr[i], arr[largest]] = [arr[largest], arr[i]];
-    yield { array: arr, swapping: [i, largest], line: 17, comparisons, swaps };
-    // recurse
-    const gen = heapify(arr, n, largest, comparisons, swaps);
-    let s = gen.next();
-    while (!s.done) {
-      yield s.value;
-      s = gen.next();
+function* heapify(arr, n, i) {
+    let largest = i;
+    let l = 2 * i + 1;
+    let r = 2 * i + 2;
+    yield { array: arr, pivot: i, line: 11, newComparisons: 0, newSwaps: 0 };
+    
+    if (l < n) {
+        yield { array: arr, comparing: [l, largest], line: 12, newComparisons: 1, newSwaps: 0 };
+        if(arr[l].value > arr[largest].value) largest = l;
     }
-  }
-
-  yield { type: 'return', name: 'heapify', locals: { n, i, comparisons, swaps } };
+    
+    if (r < n) {
+        yield { array: arr, comparing: [r, largest], line: 14, newComparisons: 1, newSwaps: 0 };
+        if (arr[r].value > arr[largest].value) largest = r;
+    }
+    
+    if (largest !== i) {
+        yield { array: arr, swapping: [i, largest], line: 17, newComparisons: 0, newSwaps: 1 };
+        [arr[i], arr[largest]] = [arr[largest], arr[i]];
+        yield { array: arr, swapping: [i, largest] };
+        
+        const heapifyGen = heapify(arr, n, largest);
+        let heapifyResult = heapifyGen.next();
+        while(!heapifyResult.done){
+            yield { ...heapifyResult.value };
+            heapifyResult = heapifyGen.next();
+        }
+    }
 }
 
-// Export mapping
 export const ALGO_FUNCTIONS = {
-  bubbleSort,
-  quickSort,
-  mergeSort,
-  heapSort,
+    bubbleSort,
+    quickSort,
+    mergeSort,
+    heapSort,
 };
-
-
 
 export const ALGO_DETAILS = {
   bubbleSort: {
