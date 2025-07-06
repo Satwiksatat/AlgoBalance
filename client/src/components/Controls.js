@@ -1,15 +1,17 @@
 // File: /client/src/components/Controls.js
 import React from 'react';
-import { ALGORITHMS } from '../constants';
+import { ALGORITHMS } from '../constants'; // Import ALGORITHMS array
 
-const Controls = ({ 
-    onGenerateRandom, onGenerateCustom, customInput, onCustomInputChange, 
-    onSort, onPause, onResume, onStep, 
-    algorithm1, onAlgoChange1, algorithm2, onAlgoChange2, 
-    isSorting, isPaused, speed, onSpeedChange, 
-    isCompareMode, onCompareModeChange, isColorBlindMode, onColorBlindModeChange
+const Controls = ({
+    onGenerateRandom, onGenerateCustom, customInput, onCustomInputChange,
+    onSort, onPause, onResume, onStep,
+    selectedAlgorithm1, onAlgoChange1, // Now receiving selectedAlgorithm1 object and its setter
+    selectedAlgorithm2, onAlgoChange2, // Now receiving selectedAlgorithm2 object and its setter
+    isSorting, isPaused, speed, onSpeedChange,
+    isCompareMode, onCompareModeChange, isColorBlindMode, onColorBlindModeChange,
+    algorithms // The full ALGORITHMS array is passed here
 }) => {
-    
+
     const ToggleSwitch = ({ label, checked, onChange }) => (
         <label className="flex items-center cursor-pointer">
             <span className="mr-3 text-sm font-medium text-gray-900">{label}</span>
@@ -20,25 +22,53 @@ const Controls = ({
             </div>
         </label>
     );
-    
+
     return (
         <div className="bg-white p-4 rounded-lg shadow-md mb-4 space-y-4">
             {/* Top Row: Main Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div className="flex items-center gap-4 flex-wrap">
-                    <select value={algorithm1} onChange={(e) => onAlgoChange1(e.target.value)} disabled={isSorting} className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200">
-                        {Object.entries(ALGORITHMS).map(([key, name]) => (<option key={key} value={key}>{name}</option>))}
+                    {/* Algorithm 1 Dropdown */}
+                    <select
+                        value={selectedAlgorithm1.value} // Use .value for the select's value
+                        onChange={(e) => {
+                            const algo = algorithms.find(a => a.value === e.target.value);
+                            onAlgoChange1(algo); // Pass the full algorithm object
+                        }}
+                        disabled={isSorting}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
+                    >
+                        {algorithms.map(algo => (
+                            <option key={algo.value} value={algo.value}>{algo.name}</option>
+                        ))}
                     </select>
+                    {/* Algorithm 2 Dropdown (only in compare mode) */}
                     {isCompareMode && (
-                        <select value={algorithm2} onChange={(e) => onAlgoChange2(e.target.value)} disabled={isSorting} className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-200">
-                            {Object.entries(ALGORITHMS).map(([key, name]) => (<option key={key} value={key}>{name}</option>))}
+                        <select
+                            value={selectedAlgorithm2.value} // Use .value for the select's value
+                            onChange={(e) => {
+                                const algo = algorithms.find(a => a.value === e.target.value);
+                                onAlgoChange2(algo); // Pass the full algorithm object
+                            }}
+                            disabled={isSorting}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-200"
+                        >
+                            {algorithms.map(algo => (
+                                <option key={algo.value} value={algo.value}>{algo.name}</option>
+                            ))}
                         </select>
                     )}
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap justify-center">
-                    {!isSorting ? <button onClick={onSort} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors">Sort!</button> : isPaused ? <button onClick={onResume} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Resume</button> : <button onClick={onPause} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Pause</button>}
-                    <button onClick={onStep} disabled={!isPaused} className="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 disabled:bg-gray-400 transition-colors">Step</button>
+                    {!isSorting ? (
+                        <button onClick={onSort} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors">Sort!</button>
+                    ) : isPaused ? (
+                        <button onClick={onResume} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Resume</button>
+                    ) : (
+                        <button onClick={onPause} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Pause</button>
+                    )}
+                    <button onClick={onStep} disabled={!isSorting && !isPaused} className="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 disabled:bg-gray-400 transition-colors">Step</button>
                     <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-700">Speed</span>
                         <input type="range" min="10" max="500" step="10" value={510 - speed} onChange={(e) => onSpeedChange(510 - e.target.value)} disabled={isSorting && !isPaused} className="w-24 cursor-pointer"/>
@@ -55,7 +85,7 @@ const Controls = ({
             <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
                 <button onClick={onGenerateRandom} disabled={isSorting} className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">Random Array</button>
                 <div className="flex items-center gap-2 flex-grow">
-                     <input 
+                     <input
                         type="text"
                         value={customInput}
                         onChange={(e) => onCustomInputChange(e.target.value)}

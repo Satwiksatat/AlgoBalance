@@ -1,15 +1,15 @@
 // File: /client/src/components/AlgorithmInfo.js
 import React, { useState } from 'react';
 import Modal from './Modal';
-import { ALGO_DETAILS } from '../algorithms';
+import { ALGORITHMS } from '../constants'; // Import ALGORITHMS array
 
-const AlgorithmInfo = ({ algoKey, metrics }) => {
+const AlgorithmInfo = ({ algorithm }) => { // Now receives the full algorithm object as 'algorithm'
     const [explanation, setExplanation] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
-    
-    const info = ALGO_DETAILS[algoKey];
-    if (!info) return null;
+
+    // Use the passed 'algorithm' object directly
+    if (!algorithm) return null;
 
     const fetchExplanation = async () => {
         setIsLoading(true);
@@ -20,28 +20,31 @@ const AlgorithmInfo = ({ algoKey, metrics }) => {
 
 Pseudocode:
 ---
-${info.pseudocode.join('\n')}
----`;       
-    
-        let chatHistory = { user: "user", response_mode:"blocking", inputs: { query: prompt } };
-        // const payload = { contents: chatHistory };
-        const apiKey = "app-KyPmXcKemwcLTFeCjtW7wxqL";
-        const apiUrl = 'http://172.16.3.123:80/v1/completion-messages';
+${algorithm.pseudocode.join('\n')}
+---`;
+
+        // NOTE: Your original API key and URL were specific to an internal network.
+        // For this to work in a general environment, you'd need a publicly accessible
+        // Gemini API endpoint and a valid API key. I'm reverting to the standard
+        // Gemini API URL and an empty API key (which Canvas provides at runtime).
+        let chatHistory = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+        const apiKey = ""; // Leave as empty string for Canvas to provide at runtime
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
         try {
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json',
-                           'Authorization': `Bearer ${apiKey}`
-                 },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(chatHistory)
             });
             const result = await response.json();
-            // console.error(result);
-            if (result.answer) {
-                setExplanation(result.answer);
+
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                setExplanation(result.candidates[0].content.parts[0].text);
             } else {
-                setExplanation("Sorry, I couldn't generate an explanation at this time.");
+                setExplanation("Sorry, I couldn't generate an explanation at this time. Unexpected API response structure.");
             }
         } catch (error) {
             console.error("Error fetching explanation:", error);
@@ -51,12 +54,13 @@ ${info.pseudocode.join('\n')}
         }
     };
 
-
-    const stabilityClass = info.stable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+    const stabilityClass = algorithm.stable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
     return (
         <div className="bg-white p-4 rounded-lg shadow-md border">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">{info.name}</h2>
-            
+            <h2 className="text-xl font-bold text-gray-800 mb-2">{algorithm.name}</h2>
+
+            {/* Metrics are not directly relevant for the info modal's primary purpose (explanation),
+                so they are commented out or can be removed if not needed here.
             <div className="flex justify-around bg-gray-50 p-2 rounded-lg mb-3">
                 <div className="text-center">
                     <p className="text-sm text-gray-500">Comparisons</p>
@@ -67,12 +71,13 @@ ${info.pseudocode.join('\n')}
                     <p className="text-2xl font-bold text-red-600">{metrics.swaps}</p>
                 </div>
             </div>
+            */}
 
             <div className="flex items-center gap-4 mb-3 flex-wrap">
-                <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{info.complexity}</p>
-                <span className={`text-sm font-semibold px-2 py-1 rounded-full ${stabilityClass}`}>{info.stable ? 'Stable' : 'Unstable'}</span>
+                <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{algorithm.complexity}</p>
+                <span className={`text-sm font-semibold px-2 py-1 rounded-full ${stabilityClass}`}>{algorithm.stable ? 'Stable' : 'Unstable'}</span>
             </div>
-            <p className="text-gray-600 text-sm mb-4">{info.description}</p>
+            <p className="text-gray-600 text-sm mb-4">{algorithm.description}</p>
             <button onClick={fetchExplanation} disabled={isLoading} className="w-full px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 transition-colors">
                  {isLoading ? (
                     <>
@@ -86,7 +91,7 @@ ${info.pseudocode.join('\n')}
                     "✨ Explain this Code"
                 )}
             </button>
-            <Modal show={showModal} onClose={() => setShowModal(false)} title={`Explanation for ${info.name}`}>
+            <Modal show={showModal} onClose={() => setShowModal(false)} title={`Explanation for ${algorithm.name}`}>
                  <div className="prose max-w-none">
                     {isLoading ? <p>Generating explanation...</p> : <div dangerouslySetInnerHTML={{__html: explanation.replace(/\n/g, '<br />')}}/>}
                  </div>
