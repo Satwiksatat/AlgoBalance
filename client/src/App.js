@@ -28,6 +28,7 @@ function App() {
   const [pseudocodeLine1, setPseudocodeLine1] = useState(0);
   const [currentCallLogIndex1, setCurrentCallLogIndex1] = useState(-1);
   const sorter1 = useRef(null);
+  const callDepthRef1 = useRef(0);
 
   // Panel 2 state
   const [array2,      setArray2]      = useState([]);
@@ -38,6 +39,7 @@ function App() {
   const [pseudocodeLine2, setPseudocodeLine2] = useState(0);
   const [currentCallLogIndex2, setCurrentCallLogIndex2] = useState(-1);
   const sorter2 = useRef(null);
+  const callDepthRef2 = useRef(0);
 
   // Shared controls
   const [customInput, setCustomInput] = useState('8, 4, 23, 42, 16, 4');
@@ -68,6 +70,9 @@ function App() {
     setCallLog2([]);
     setPseudocodeLine2(0);
     setCurrentCallLogIndex2(-1);
+
+    callDepthRef1.current = 0;
+    callDepthRef2.current = 0;
 
     sorter1.current = null;
     sorter2.current = null;
@@ -115,7 +120,7 @@ function App() {
     handleGenerateArrayType('random'); // Generate a random array on initial load
   }, [isColorBlindMode, handleGenerateArrayType]);
 
-  const runAnimationStep = useCallback((sorterRef, setArray, setHighlights, setMetrics, setCallLog, setPseudocodeLine, setCurrentCallLogIndex) => {
+  const runAnimationStep = useCallback((sorterRef, setArray, setHighlights, setMetrics, setCallLog, setPseudocodeLine, setCurrentCallLogIndex, depthRef) => {
     if (sorterRef.current) {
       const { value: event, done } = sorterRef.current.next();
       if (!done) {
@@ -128,8 +133,21 @@ function App() {
 
         if (event.type === 'call' || event.type === 'return') {
           setCallLog(prev => {
-            const updatedLog = [...prev, event];
+            const depth = event.type === 'call' ? depthRef.current + 1 : depthRef.current;
+            const frame = {
+              ...event,
+              locals: {
+                ...event.locals,
+                callDepth: depth
+              }
+            };
+            const updatedLog = [...prev, frame];
             setCurrentCallLogIndex(updatedLog.length - 1);
+            if (event.type === 'call') {
+              depthRef.current += 1;
+            } else if (event.type === 'return' && depthRef.current > 0) {
+              depthRef.current -= 1;
+            }
             return updatedLog;
           });
         }
@@ -148,10 +166,10 @@ function App() {
   useEffect(() => {
     if (isSorting && !isPaused) {
       timeoutId.current = setTimeout(() => {
-        let done1 = runAnimationStep(sorter1, setArray1, setHighlights1, setMetrics1, setCallLog1, setPseudocodeLine1, setCurrentCallLogIndex1);
+        let done1 = runAnimationStep(sorter1, setArray1, setHighlights1, setMetrics1, setCallLog1, setPseudocodeLine1, setCurrentCallLogIndex1, callDepthRef1);
         let done2 = false;
         if (isCompareMode) {
-          done2 = runAnimationStep(sorter2, setArray2, setHighlights2, setMetrics2, setCallLog2, setPseudocodeLine2, setCurrentCallLogIndex2);
+          done2 = runAnimationStep(sorter2, setArray2, setHighlights2, setMetrics2, setCallLog2, setPseudocodeLine2, setCurrentCallLogIndex2, callDepthRef2);
         }
 
         if (done1 && (!isCompareMode || done2)) {
@@ -187,9 +205,9 @@ function App() {
       }
       setIsSorting(true);
     }
-    runAnimationStep(sorter1, setArray1, setHighlights1, setMetrics1, setCallLog1, setPseudocodeLine1, setCurrentCallLogIndex1);
+    runAnimationStep(sorter1, setArray1, setHighlights1, setMetrics1, setCallLog1, setPseudocodeLine1, setCurrentCallLogIndex1, callDepthRef1);
     if (isCompareMode) {
-      runAnimationStep(sorter2, setArray2, setHighlights2, setMetrics2, setCallLog2, setPseudocodeLine2, setCurrentCallLogIndex2);
+      runAnimationStep(sorter2, setArray2, setHighlights2, setMetrics2, setCallLog2, setPseudocodeLine2, setCurrentCallLogIndex2, callDepthRef2);
     }
     setIsPaused(true);
   };
