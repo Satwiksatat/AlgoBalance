@@ -4,10 +4,11 @@ import { ALGORITHMS } from '../constants';
 
 const Controls = ({ 
     onGenerateRandom, onGenerateCustom, customInput, onCustomInputChange, 
-    onSort, onPause, onResume, onStep, 
+    onSort, onPause, onResume, onStep, onStop, 
     algorithm1, onAlgoChange1, algorithm2, onAlgoChange2, 
     isSorting, isPaused, speed, onSpeedChange, 
-    isCompareMode, onCompareModeChange, isColorBlindMode, onColorBlindModeChange
+    isCompareMode, onCompareModeChange, isColorBlindMode, onColorBlindModeChange,
+    arraySize, onArraySizeChange
 }) => {
     
     const ToggleSwitch = ({ label, checked, onChange }) => (
@@ -37,7 +38,16 @@ const Controls = ({
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap justify-center">
-                    {!isSorting ? <button onClick={onSort} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors">Sort!</button> : isPaused ? <button onClick={onResume} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Resume</button> : <button onClick={onPause} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Pause</button>}
+                    {!isSorting ? (
+                        <button onClick={onSort} className="px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition-colors">Sort!</button>
+                    ) : isPaused ? (
+                        <button onClick={onResume} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Resume</button>
+                    ) : (
+                        <button onClick={onPause} className="px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition-colors">Pause</button>
+                    )}
+                    {isSorting && (
+                        <button onClick={onStop} className="px-4 py-2 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition-colors">Stop</button>
+                    )}
                     <button onClick={onStep} disabled={!isPaused} className="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 disabled:bg-gray-400 transition-colors">Step</button>
                     <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-700">Speed</span>
@@ -53,7 +63,33 @@ const Controls = ({
 
             {/* Bottom Row: Data Input */}
             <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-                <button onClick={onGenerateRandom} disabled={isSorting} className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">Random Array</button>
+                {/* Random Array Generation */}
+                <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-700">Size</span>
+                    <input 
+                        type="range" 
+                        min="5" 
+                        max={isCompareMode ? 30 : 70} 
+                        step="5" 
+                        value={arraySize} 
+                        onChange={(e) => onArraySizeChange(Number(e.target.value))} 
+                        disabled={isSorting} 
+                        className="w-24 cursor-pointer"
+                    />
+                    {/* New input for direct number entry */}
+                    <input
+                        type="number"
+                        min="5"
+                        max={isCompareMode ? 30 : 70}
+                        value={arraySize}
+                        onChange={(e) => onArraySizeChange(Number(e.target.value))}
+                        disabled={isSorting}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
+                    />
+                    <button onClick={onGenerateRandom} disabled={isSorting} className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">Generate Random</button>
+                </div>
+
+                {/* Custom Array Input */}
                 <div className="flex items-center gap-2 flex-grow">
                      <input 
                         type="text"

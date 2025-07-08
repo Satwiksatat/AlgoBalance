@@ -6,22 +6,19 @@ import { ALGO_DETAILS } from '../algorithms';
 const AlgorithmInfo = ({ algoKey, metrics }) => {
     const [explanation, setExplanation] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [showModal, setShowModal] = useState(false);
+    const [showCodeExplanationModal, setShowCodeExplanationModal] = useState(false);
+    const [showComparisonsModal, setShowComparisonsModal] = useState(false);
+    const [showSwapsModal, setShowSwapsModal] = useState(false);
     
     const info = ALGO_DETAILS[algoKey];
     if (!info) return null;
 
     const fetchExplanation = async () => {
         setIsLoading(true);
-        setShowModal(true);
+        setShowCodeExplanationModal(true);
         setExplanation("");
 
-        const prompt = `Please provide a simple, line-by-line explanation of the following sorting algorithm pseudocode for a beginner. Explain what each line does in simple terms.
-
-Pseudocode:
----
-${info.pseudocode.join('\n')}
----`;       
+        const prompt = `Please provide a simple, line-by-line explanation of the following sorting algorithm pseudocode for a beginner. Explain what each line does in simple terms.\n\nPseudocode:\n---\n${info.pseudocode.join('\n')}\n---`;       
     
         let chatHistory = { user: "user", response_mode:"blocking", inputs: { query: prompt } };
         // const payload = { contents: chatHistory };
@@ -59,11 +56,19 @@ ${info.pseudocode.join('\n')}
             
             <div className="flex justify-around bg-gray-50 p-2 rounded-lg mb-3">
                 <div className="text-center">
-                    <p className="text-sm text-gray-500">Comparisons</p>
+                    <p className="text-sm text-gray-500 flex items-center justify-center">Comparisons 
+                        <button onClick={() => setShowComparisonsModal(true)} className="ml-1 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </button>
+                    </p>
                     <p className="text-2xl font-bold text-blue-600">{metrics.comparisons}</p>
                 </div>
                  <div className="text-center">
-                    <p className="text-sm text-gray-500">Swaps</p>
+                    <p className="text-sm text-gray-500 flex items-center justify-center">Swaps
+                        <button onClick={() => setShowSwapsModal(true)} className="ml-1 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </button>
+                    </p>
                     <p className="text-2xl font-bold text-red-600">{metrics.swaps}</p>
                 </div>
             </div>
@@ -86,10 +91,20 @@ ${info.pseudocode.join('\n')}
                     "✨ Explain this Code"
                 )}
             </button>
-            <Modal show={showModal} onClose={() => setShowModal(false)} title={`Explanation for ${info.name}`}>
+            <Modal show={showCodeExplanationModal} onClose={() => setShowCodeExplanationModal(false)} title={`Explanation for ${info.name}`}>
                  <div className="prose max-w-none">
                     {isLoading ? <p>Generating explanation...</p> : <div dangerouslySetInnerHTML={{__html: explanation.replace(/\n/g, '<br />')}}/>}
                  </div>
+            </Modal>
+
+            <Modal show={showComparisonsModal} onClose={() => setShowComparisonsModal(false)} title="What are Comparisons?">
+                <p>In sorting algorithms, a <strong>comparison</strong> occurs when two elements are compared to determine their relative order. For example, in Bubble Sort, when we check if `A[j] > A[j+1]`, that's one comparison.</p>
+                <p className="mt-2">The number of comparisons is a key metric for analyzing the efficiency of a sorting algorithm, especially for comparison-based sorts. Fewer comparisons generally mean a faster algorithm.</p>
+            </Modal>
+
+            <Modal show={showSwapsModal} onClose={() => setShowSwapsModal(false)} title="What are Swaps?">
+                <p>A <strong>swap</strong> occurs when the positions of two elements in the array are exchanged. For example, if `A[j]` and `A[j+1]` are in the wrong order, they are swapped to correct their positions.</p>
+                <p className="mt-2">The number of swaps is another important metric. Some algorithms might perform many comparisons but few swaps (e.g., Selection Sort), while others might perform both (e.g., Bubble Sort).</p>
             </Modal>
         </div>
     )

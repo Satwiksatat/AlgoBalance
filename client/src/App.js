@@ -19,6 +19,7 @@ function App() {
   const [algorithm1, setAlgorithm1] = useState('bubbleSort');
   const [highlights1, setHighlights1] = useState({});
   const [metrics1, setMetrics1] = useState({ comparisons: 0, swaps: 0 });
+  const [stack1, setStack1] = useState([]); // New state for call stack
   const sorter1 = useRef(null);
 
   // State for Panel 2
@@ -26,6 +27,7 @@ function App() {
   const [algorithm2, setAlgorithm2] = useState('quickSort');
   const [highlights2, setHighlights2] = useState({});
   const [metrics2, setMetrics2] = useState({ comparisons: 0, swaps: 0 });
+  const [stack2, setStack2] = useState([]); // New state for call stack
   const sorter2 = useRef(null);
   
   // Shared state
@@ -33,6 +35,7 @@ function App() {
   const [isSorting, setIsSorting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [speed, setSpeed] = useState(100);
+  const [arraySize, setArraySize] = useState(20); // New state for array size
   const [nextStep, setNextStep] = useState(0); 
   const timeoutId = useRef(null);
 
@@ -44,6 +47,8 @@ function App() {
     setHighlights2({});
     setMetrics1({ comparisons: 0, swaps: 0 });
     setMetrics2({ comparisons: 0, swaps: 0 });
+    setStack1([]); // Reset stack
+    setStack2([]); // Reset stack
     sorter1.current = null;
     sorter2.current = null;
   }, []);
@@ -55,12 +60,12 @@ function App() {
 
   const handleGenerateRandomArray = useCallback(() => {
     resetSorting();
-    setInitialArrays(generateRandomArray(isColorBlindMode));
-  }, [resetSorting, setInitialArrays, isColorBlindMode]);
+    setInitialArrays(generateRandomArray(isColorBlindMode, isCompareMode ? Math.min(arraySize, 30) : arraySize));
+  }, [resetSorting, setInitialArrays, isColorBlindMode, arraySize]);
 
   const handleGenerateCustomArray = useCallback(() => {
       resetSorting();
-      setInitialArrays(parseCustomArray(customInput, isColorBlindMode));
+      setInitialArrays(parseCustomArray(customInput, isColorBlindMode, isCompareMode ? 30 : null));
   }, [customInput, resetSorting, setInitialArrays, isColorBlindMode]);
   
   // Regenerate arrays if color-blind mode changes
@@ -78,6 +83,7 @@ function App() {
             setArray1(res1.value.array);
             setHighlights1({ ...res1.value });
             setMetrics1({ comparisons: res1.value.comparisons, swaps: res1.value.swaps });
+            setStack1(prevStack => [...prevStack, ...(res1.value.stack || [])]);
         } else {
             setArray1(res1.value);
             setHighlights1({ sortedIndices: Array.from(Array(res1.value.length).keys()) });
@@ -92,6 +98,7 @@ function App() {
             setArray2(res2.value.array);
             setHighlights2({ ...res2.value });
             setMetrics2({ comparisons: res2.value.comparisons, swaps: res2.value.swaps });
+            setStack2(prevStack => [...prevStack, ...(res2.value.stack || [])]);
         } else {
              setArray2(res2.value);
              setHighlights2({ sortedIndices: Array.from(Array(res2.value.length).keys()) });
@@ -162,6 +169,7 @@ function App() {
             onPause={handlePause} 
             onResume={handleResume} 
             onStep={handleStep} 
+            onStop={resetSorting} 
             algorithm1={algorithm1}
             onAlgoChange1={setAlgorithm1} 
             algorithm2={algorithm2}
@@ -174,6 +182,8 @@ function App() {
             onCompareModeChange={setIsCompareMode}
             isColorBlindMode={isColorBlindMode}
             onColorBlindModeChange={setIsColorBlindMode}
+            arraySize={arraySize}
+            onArraySizeChange={(size) => setArraySize(Math.min(70, Math.max(5, size)))}
           />
           <div className={`mt-4 grid gap-8 ${isCompareMode ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
               <AlgorithmPanel 
@@ -181,6 +191,8 @@ function App() {
                   highlights={highlights1}
                   algoKey={algorithm1}
                   metrics={metrics1}
+                  stack={stack1} // Pass stack
+                  isSorting={isSorting}
               />
               {isCompareMode && (
                   <AlgorithmPanel
@@ -188,6 +200,8 @@ function App() {
                       highlights={highlights2}
                       algoKey={algorithm2}
                       metrics={metrics2}
+                      stack={stack2} // Pass stack
+                      isSorting={isSorting}
                   />
               )}
           </div>
